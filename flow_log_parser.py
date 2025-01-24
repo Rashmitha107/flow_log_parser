@@ -28,19 +28,23 @@ def parse_lookup_table(file_path):
     return lookup
 
 # Parse the flow log file and map each entry to tags using the lookup table.
-def parse_flow_logs(file_path, lookup_table):
+def parse_flow_logs(file_path, lookup_table, flow_log_type="default", dstport_index=6, protocol_index=7):
     tag_counts = defaultdict(int)  # Stores count for each tag
     port_protocol_counts = defaultdict(int)  # Stores count for each port/protocol combination
 
     with open(file_path, 'r') as file:
         for line in file:
             parts = line.split()
-            if len(parts) < 12:
+            if len(parts) <= max(dstport_index, protocol_index):
                 continue  # Skip malformed lines
 
             # Extract relevant fields from flow log
-            dstport = parts[6]   # This is the destination port (Column 7 in the flow log)
-            protocol_number = parts[7]  # This is the protocol number (Column 8 in the flow log)
+            if flow_log_type == "default":
+                dstport = parts[dstport_index]   # Destination port (Column 7) in default V2
+                protocol_number = parts[protocol_index]  # Protocol number (Column 8) in default V2
+            else:
+                dstport = parts[dstport_index]  # Based on user input
+                protocol_number = parts[protocol_index]  # Based on user input
 
             # Convert protocol number to protocol name
             protocol = PROTOCOL_MAPPING.get(protocol_number, None)
@@ -74,15 +78,33 @@ def write_output(tag_counts, port_protocol_counts, output_file):
 
 def main():
     
-    flow_log_file = 'flow_logs.txt' 
-    lookup_file = 'lookup_table.csv' 
-    output_file = 'output.csv' 
+    use_default = input("Do you want to use the default files (flow_logs.txt, lookup_table.csv, output.csv)? (y/n): ").strip().lower()
+
+    if use_default == 'y':
+        flow_log_file = 'flow_logs.txt'  # Default flow log file path
+        lookup_file = 'lookup_table.csv'  # Default lookup table CSV file path
+        output_file = 'output.csv'  # Default output file path
+        flow_log_type = "default"  # Automatically set to default for default files
+        dstport_index = 6  # Default: destination port is column 7 (index 6)
+        protocol_index = 7  # Default: protocol is column 8 (index 7)
+    else:
+        flow_log_file = input("Enter the path to the flow log file: ").strip()
+        lookup_file = input("Enter the path to the lookup table CSV file: ").strip()
+        output_file = input("Enter the path to the output file: ").strip()
+        flow_log_type = input("Is the flow log format default or custom? (default/custom): ").strip().lower()
+
+        if flow_log_type == "custom":
+            dstport_index = int(input("Enter the column number for destination port: ").strip()) - 1
+            protocol_index = int(input("Enter the column number for protocol: ").strip()) - 1
+        else:
+            dstport_index = 6  # Default: destination port is column 7
+            protocol_index = 7  # Default: protocol is column 8 
 
     # Parse the lookup table
     lookup_table = parse_lookup_table(lookup_file)
     
     # Parse flow logs and generate the counts
-    tag_counts, port_protocol_counts = parse_flow_logs(flow_log_file, lookup_table)
+    tag_counts, port_protocol_counts = parse_flow_logs(flow_log_file, lookup_table, flow_log_type, dstport_index, protocol_index)
     
     # Write the output to a file
     write_output(tag_counts, port_protocol_counts, output_file)
