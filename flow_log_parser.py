@@ -39,12 +39,8 @@ def parse_flow_logs(file_path, lookup_table, flow_log_type="default", dstport_in
                 continue  # Skip malformed lines
 
             # Extract relevant fields from flow log
-            if flow_log_type == "default":
-                dstport = parts[dstport_index]   # Destination port (Column 7) in default V2
-                protocol_number = parts[protocol_index]  # Protocol number (Column 8) in default V2
-            else:
-                dstport = parts[dstport_index]  # Based on user input
-                protocol_number = parts[protocol_index]  # Based on user input
+            dstport = parts[dstport_index]
+            protocol_number = parts[protocol_index]
 
             # Convert protocol number to protocol name
             protocol = PROTOCOL_MAPPING.get(protocol_number, None)
